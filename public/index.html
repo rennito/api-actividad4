@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Productos - Actividad 4</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <span class="app-badge">Node.js • Express • MySQL • JWT</span>
+      <h1>Sistema de Gestión de Productos</h1>
+      <p>Administración segura de inventario con autenticación y operaciones CRUD</p>
+    </header>
+
+    <!-- Sección de Autenticación -->
+    <div id="auth-section" class="card auth-card">
+      <div class="tabs" role="tablist">
+        <button type="button" id="tab-login" class="tab-btn active" onclick="cambiarTabAuth('login')">Iniciar Sesión</button>
+        <button type="button" id="tab-register" class="tab-btn" onclick="cambiarTabAuth('register')">Registrarse</button>
+      </div>
+
+      <div id="panel-login" class="auth-panel">
+        <h2>Bienvenido de nuevo</h2>
+        <div class="field">
+          <label for="login-email">Correo electrónico</label>
+          <input type="email" id="login-email" placeholder="correo@ejemplo.com" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button class="btn-primary w-full" onclick="iniciarSesion()">Ingresar</button>
+      </div>
+
+      <div id="panel-register" class="auth-panel hidden">
+        <h3>¿No tienes cuenta? Regístrate</h3>
+        <div class="field">
+          <label for="reg-nombre">Nombre completo</label>
+          <input type="text" id="reg-nombre" placeholder="Tu nombre completo">
+        </div>
+        <div class="field">
+          <label for="reg-email">Correo electrónico</label>
+          <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="field">
+          <label for="reg-password">Contraseña</label>
+          <input type="password" id="reg-password" placeholder="Contraseña (mín. 6 caracteres)">
+        </div>
+        <button class="btn-primary w-full" onclick="registrarUsuario()">Registrar</button>
+      </div>
+
+      <p id="auth-msg"></p>
+    </div>
+
+    <!-- Sección CRUD Protegida -->
+    <div id="crud-section" class="hidden">
+      <div class="top-bar">
+        <div>
+          <h2 id="welcome-user">Panel de Productos</h2>
+          <div class="sub-status">Sesión activa protegida con JWT</div>
+        </div>
+        <button class="btn-danger" onclick="cerrarSesion()">Cerrar Sesión</button>
+      </div>
+
+      <!-- Resumen dinámico del inventario -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total de Productos</div>
+          <div class="stat-value" id="stat-total-items">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Unidades en Stock</div>
+          <div class="stat-value" id="stat-total-stock">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Valor Estimado</div>
+          <div class="stat-value" id="stat-total-value">$0.00</div>
+        </div>
+      </div>
+
+      <!-- Formulario de Producto -->
+      <div class="card">
+        <h3 id="form-title" style="margin: 0 0 14px;">Agregar Producto</h3>
+        <input type="hidden" id="prod-id">
+        <div class="form-grid">
+          <div class="field" style="margin-bottom: 0;">
+            <label for="prod-nombre">Nombre</label>
+            <input type="text" id="prod-nombre" placeholder="Nombre del producto">
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label for="prod-desc">Descripción</label>
+            <input type="text" id="prod-desc" placeholder="Descripción">
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label for="prod-precio">Precio ($)</label>
+            <input type="number" id="prod-precio" placeholder="Precio" step="0.01">
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label for="prod-stock">Stock</label>
+            <input type="number" id="prod-stock" placeholder="Stock">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="guardarProducto()">Guardar Producto</button>
+          <button type="button" onclick="limpiarFormulario()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Tabla de Productos -->
+      <div class="card">
+        <div class="table-header-bar">
+          <h3>Inventario de Productos</h3>
+          <input type="search" id="buscar-producto" class="search-box" placeholder="Buscar por nombre o descripción..." oninput="filtrarTabla()">
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-productos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Cambia entre pestaña de Iniciar Sesión y Registro sin alterar funciones de app.js
+    function cambiarTabAuth(tab) {
+      const esLogin = tab === 'login';
+      document.getElementById('panel-login').classList.toggle('hidden', !esLogin);
+      document.getElementById('panel-register').classList.toggle('hidden', esLogin);
+      document.getElementById('tab-login').classList.toggle('active', esLogin);
+      document.getElementById('tab-register').classList.toggle('active', !esLogin);
+      document.getElementById('auth-msg').textContent = '';
+    }
+
+    // Filtra filas visibles y recalcula métricas cuando cambia la tabla
+    function filtrarTabla() {
+      const termino = (document.getElementById('buscar-producto').value || '').toLowerCase().trim();
+      const filas = document.querySelectorAll('#tabla-productos tr');
+      filas.forEach(fila => {
+        const texto = fila.textContent.toLowerCase();
+        fila.style.display = texto.includes(termino) ? '' : 'none';
+      });
+    }
+
+    function actualizarResumenYEstilos() {
+      const filas = Array.from(document.querySelectorAll('#tabla-productos tr'));
+      let totalItems = 0;
+      let totalStock = 0;
+      let totalValor = 0;
+
+      filas.forEach(fila => {
+        const celdas = fila.querySelectorAll('td');
+        if (celdas.length < 5) return;
+
+        totalItems += 1;
+        const precioTexto = celdas[3].textContent.replace(/[^0-9.-]+/g, '');
+        const stockTexto = celdas[4].textContent.replace(/[^0-9-]+/g, '');
+        const precio = parseFloat(precioTexto) || 0;
+        const stock = parseInt(stockTexto, 10) || 0;
+
+        totalStock += stock;
+        totalValor += precio * stock;
+
+        // Estiliza la celda de stock con badge de estado si aún no lo tiene
+        if (!celdas[4].querySelector('.badge')) {
+          let claseBadge = 'badge-ok';
+          let etiqueta = `${stock} disp.`;
+          if (stock === 0) {
+            claseBadge = 'badge-out';
+            etiqueta = 'Agotado (0)';
+          } else if (stock <= 5) {
+            claseBadge = 'badge-low';
+            etiqueta = `Bajo (${stock})`;
+          }
+          celdas[4].innerHTML = `<span class="badge ${claseBadge}">${etiqueta}</span>`;
+        }
+
+        // Estiliza botones de acción de cada fila
+        const btns = celdas[5]?.querySelectorAll('button') || [];
+        if (btns[0]) btns[0].classList.add('btn-sm');
+        if (btns[1]) btns[1].classList.add('btn-sm', 'btn-danger');
+      });
+
+      document.getElementById('stat-total-items').textContent = totalItems;
+      document.getElementById('stat-total-stock').textContent = totalStock;
+      document.getElementById('stat-total-value').textContent =
+        `$${totalValor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    // Observa cambios en #tabla-productos cuando app.js renderiza los datos
+    const tbodyObserver = new MutationObserver(() => {
+      actualizarResumenYEstilos();
+      filtrarTabla();
+    });
+    tbodyObserver.observe(document.getElementById('tabla-productos'), { childList: true });
+  </script>
+</body>
+</html>
