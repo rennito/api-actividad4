@@ -1,0 +1,33 @@
+name: CI API Productos (Node.js + Jest)
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas unitarias con Jest
+        env:
+          JWT_SECRET: test_secret_ci
+          DB_HOST: localhost
+          DB_USER: root
+          DB_PASSWORD: ""
+          DB_NAME: inventario_act4_db
+        run: npm test
